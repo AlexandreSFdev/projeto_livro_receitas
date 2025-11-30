@@ -1,0 +1,313 @@
+{% extends 'receitas/base.html' %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    
+    .ingrediente-row {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 15px;
+        position: relative;
+    }
+    
+    .ingrediente-row.empty-form {
+        display: none;
+    }
+    
+    .btn-remove-ingrediente {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+    
+    .categoria-checkbox {
+        display: inline-block;
+        margin-right: 15px;
+        margin-bottom: 10px;
+    }
+    
+    .categoria-checkbox input[type="checkbox"] {
+        margin-right: 5px;
+    }
+    
+    .categoria-checkbox label {
+        cursor: pointer;
+        padding: 8px 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 20px;
+        transition: all 0.3s;
+        display: inline-block;
+    }
+    
+    .categoria-checkbox input[type="checkbox"]:checked + label {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="form-card">
+            <h2 class="mb-4 fw-bold">
+                <i class="bi bi-pencil-square"></i> {{ titulo }}
+            </h2>
+            
+            <form method="post" enctype="multipart/form-data" id="receitaForm">
+                {% csrf_token %}
+                
+                <h4 class="mb-3 text-primary">
+                    <i class="bi bi-info-circle"></i> Informações Básicas
+                </h4>
+                
+                <div class="row">
+                    <div class="col-md-8 mb-3">
+                        <label class="form-label fw-bold">Título da Receita *</label>
+                        {{ form.titulo }}
+                        {% if form.titulo.errors %}
+                            <div class="text-danger small">{{ form.titulo.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Foto</label>
+                        {{ form.foto }}
+                        {% if form.foto.errors %}
+                            <div class="text-danger small">{{ form.foto.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Descrição *</label>
+                    {{ form.descricao }}
+                    {% if form.descricao.errors %}
+                        <div class="text-danger small">{{ form.descricao.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Tempo de Preparo (min) *</label>
+                        {{ form.tempo_preparo }}
+                        {% if form.tempo_preparo.errors %}
+                            <div class="text-danger small">{{ form.tempo_preparo.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Porções *</label>
+                        {{ form.porcoes }}
+                        {% if form.porcoes.errors %}
+                            <div class="text-danger small">{{ form.porcoes.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Dificuldade *</label>
+                        {{ form.dificuldade }}
+                        {% if form.dificuldade.errors %}
+                            <div class="text-danger small">{{ form.dificuldade.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- CATEGORIAS -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold d-block">Categorias</label>
+                    <div id="categorias-container">
+                        {% for choice in form.categorias %}
+                        <div class="categoria-checkbox">
+                            {{ choice.tag }}
+                            <label for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <h4 class="mb-3 text-primary">
+                    <i class="bi bi-list-check"></i> Ingredientes
+                </h4>
+                
+                {{ formset.management_form }}
+                <div id="ingredientes-container">
+                    {% for form_ingrediente in formset %}
+                    <div class="ingrediente-row {% if forloop.counter0 >= formset.initial_form_count and not form_ingrediente.instance.pk %}empty-form{% endif %}" data-form-idx="{{ forloop.counter0 }}">
+                        {{ form_ingrediente.id }}
+                        
+                        {% if form_ingrediente.instance.pk or forloop.counter0 < formset.initial_form_count %}
+                        <button type="button" class="btn btn-danger btn-sm btn-remove-ingrediente" onclick="removerIngrediente(this)">
+                            <i class="bi bi-x"></i>
+                        </button>
+                        {% endif %}
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label small">Ingrediente *</label>
+                                {{ form_ingrediente.ingrediente }}
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <label class="form-label small">Quantidade *</label>
+                                {{ form_ingrediente.quantidade }}
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <label class="form-label small">Unidade *</label>
+                                {{ form_ingrediente.unidade }}
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <label class="form-label small">Observação</label>
+                                {{ form_ingrediente.observacao }}
+                            </div>
+                            <div class="col-md-1 mb-2">
+                                {{ form_ingrediente.DELETE }}
+                            </div>
+                        </div>
+                        
+                        <!-- Campo para criar novo ingrediente -->
+                        {% if form_ingrediente.novo_ingrediente %}
+                        <div class="row mt-2">
+                            <div class="col-12">
+                                <label class="form-label small text-muted">Ou crie um novo ingrediente:</label>
+                                {{ form_ingrediente.novo_ingrediente }}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <button type="button" class="btn btn-success mb-3" onclick="adicionarIngrediente()">
+                    <i class="bi bi-plus-circle"></i> Adicionar Mais Ingredientes
+                </button>
+                
+                <hr class="my-4">
+                
+                <h4 class="mb-3 text-primary">
+                    <i class="bi bi-egg-fried"></i> Modo de Preparo
+                </h4>
+                
+                <div class="mb-4">
+                    {{ form.modo_preparo }}
+                    {% if form.modo_preparo.errors %}
+                        <div class="text-danger small">{{ form.modo_preparo.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{% url 'lista_receitas' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Salvar Receita
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Estilizar os campos do formulário */
+    input[type="text"],
+    input[type="number"],
+    input[type="file"],
+    select,
+    textarea {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        transition: border-color 0.3s;
+    }
+    
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus,
+    textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+    
+    input[type="file"] {
+        padding: 5px;
+    }
+    
+    input[type="checkbox"] {
+        display: none;
+    }
+</style>
+
+<script>
+// Pegar contador inicial do management form
+let formCount = parseInt(document.getElementById('id_ingredientereceita_set-TOTAL_FORMS').value);
+
+function adicionarIngrediente() {
+    const container = document.getElementById('ingredientes-container');
+    const emptyForm = document.querySelector('.ingrediente-row.empty-form');
+    
+    if (!emptyForm) {
+        alert('Número máximo de ingredientes atingido. Salve a receita e edite para adicionar mais.');
+        return;
+    }
+    
+    // Clonar o formulário vazio
+    const newForm = emptyForm.cloneNode(true);
+    newForm.classList.remove('empty-form');
+    newForm.setAttribute('data-form-idx', formCount);
+    
+    // Atualizar os índices dos campos
+    const regex = new RegExp('__prefix__', 'g');
+    newForm.innerHTML = newForm.innerHTML.replace(regex, formCount);
+    
+    // Adicionar botão de remover
+    const btnRemove = document.createElement('button');
+    btnRemove.type = 'button';
+    btnRemove.className = 'btn btn-danger btn-sm btn-remove-ingrediente';
+    btnRemove.innerHTML = '<i class="bi bi-x"></i>';
+    btnRemove.onclick = function() { removerIngrediente(this); };
+    newForm.insertBefore(btnRemove, newForm.firstChild);
+    
+    // Adicionar ao container
+    container.appendChild(newForm);
+    
+    // Incrementar contador
+    formCount++;
+    document.getElementById('id_ingredientereceita_set-TOTAL_FORMS').value = formCount;
+}
+
+function removerIngrediente(button) {
+    const row = button.closest('.ingrediente-row');
+    const deleteCheckbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+    
+    if (deleteCheckbox) {
+        // Se já existe no banco, marcar para deletar
+        deleteCheckbox.checked = true;
+        row.style.display = 'none';
+    } else {
+        // Se é novo, apenas remover do DOM
+        row.remove();
+        
+        // Atualizar contador
+        formCount--;
+        document.getElementById('id_ingredientereceita_set-TOTAL_FORMS').value = formCount;
+    }
+}
+
+// Prevenir submit múltiplo
+document.getElementById('receitaForm').addEventListener('submit', function(e) {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Salvando...';
+});
+</script>
+{% endblock %}

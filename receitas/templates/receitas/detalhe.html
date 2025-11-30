@@ -1,0 +1,381 @@
+{% extends 'receitas/base.html' %}
+
+{% block title %}{{ receita.titulo }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            {% if receita.foto %}
+            <img src="{{ receita.foto.url }}" class="card-img-top" alt="{{ receita.titulo }}" style="max-height: 400px; object-fit: cover;">
+            {% endif %}
+            
+            <div class="card-body">
+                <!-- Cabeçalho com título e botões -->
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h1 class="card-title fw-bold">{{ receita.titulo }}</h1>
+                        <p class="text-muted">
+                            <i class="bi bi-person"></i> Por {{ receita.autor.username }} | 
+                            <i class="bi bi-calendar"></i> {{ receita.criado_em|date:"d/m/Y" }} |
+                            <i class="bi bi-eye"></i> {{ receita.visualizacoes }} visualizações
+                        </p>
+                    </div>
+                    <div class="btn-group">
+                        {% if user.is_authenticated %}
+                        <a href="{% url 'toggle_favorito' receita.pk %}" 
+                           class="btn {% if esta_favoritado %}btn-danger{% else %}btn-outline-danger{% endif %}"
+                           id="btnFavorito">
+                            <i class="bi bi-heart{% if esta_favoritado %}-fill{% endif %}"></i>
+                            <span id="favoritoCount">{{ receita.favoritos.count }}</span>
+                        </a>
+                        {% endif %}
+                        {% if user == receita.autor %}
+                        <a href="{% url 'editar_receita' receita.pk %}" class="btn btn-outline-primary">
+                            <i class="bi bi-pencil"></i> Editar
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Categorias -->
+                {% if receita.categorias.all %}
+                <div class="mb-3">
+                    {% for categoria in receita.categorias.all %}
+                    <a href="{% url 'receitas_por_categoria' categoria.id %}" 
+                       class="badge bg-{{ categoria.cor }} text-decoration-none me-1">
+                        <i class="bi {{ categoria.icone }}"></i> {{ categoria.nome }}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <!-- Meta informações -->
+                <div class="recipe-meta mb-4">
+                    <span class="badge bg-primary"><i class="bi bi-clock"></i> {{ receita.tempo_preparo }} min</span>
+                    <span class="badge bg-success"><i class="bi bi-people"></i> {{ receita.porcoes }} porções</span>
+                    <span class="badge bg-info">{{ receita.get_dificuldade_display }}</span>
+                    {% if media_avaliacoes %}
+                    <span class="badge bg-warning text-dark">
+                        <i class="bi bi-star-fill"></i> {{ media_avaliacoes|floatformat:1 }} ({{ avaliacoes.count }})
+                    </span>
+                    {% endif %}
+                </div>
+                
+                <h5 class="fw-bold mb-3"><i class="bi bi-card-text"></i> Descrição</h5>
+                <p class="lead">{{ receita.descricao }}</p>
+                
+                <hr class="my-4">
+                
+                <h5 class="fw-bold mb-3"><i class="bi bi-list-check"></i> Ingredientes</h5>
+                <ul class="list-group list-group-flush mb-4">
+                    {% for item in ingredientes %}
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle text-success"></i>
+                        {{ item.quantidade }} {{ item.get_unidade_display }} de {{ item.ingrediente.nome }}
+                        {% if item.observacao %}<span class="text-muted">({{ item.observacao }})</span>{% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                
+                <h5 class="fw-bold mb-3"><i class="bi bi-egg-fried"></i> Modo de Preparo</h5>
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <p style="white-space: pre-line;">{{ receita.modo_preparo }}</p>
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <!-- Seção de Comentários -->
+                <h5 class="fw-bold mb-3">
+                    <i class="bi bi-chat-dots"></i> Comentários ({{ comentarios.count }})
+                </h5>
+                
+                {% if user.is_authenticated %}
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <form method="post" action="{% url 'adicionar_comentario' receita.pk %}">
+                            {% csrf_token %}
+                            <textarea name="texto" class="form-control mb-3" rows="3" 
+                                      placeholder="Deixe seu comentário..." required></textarea>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send"></i> Comentar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-info mb-4">
+                    <a href="{% url 'login' %}?next={{ request.path }}">Faça login</a> para comentar.
+                </div>
+                {% endif %}
+                
+                <!-- Lista de Comentários -->
+                {% for comentario in comentarios %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <strong><i class="bi bi-person-circle"></i> {{ comentario.usuario.username }}</strong>
+                            <small class="text-muted">{{ comentario.criado_em|date:"d/m/Y H:i" }}</small>
+                        </div>
+                        <p class="mb-0">{{ comentario.texto }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Card de Informações Nutricionais -->
+        <div class="card nutrition-card mb-4">
+            <div class="card-body">
+                <h5 class="fw-bold mb-3">
+                    <i class="bi bi-heart-pulse"></i> Informações Nutricionais
+                </h5>
+                <p class="small mb-3">Por porção (Total: {{ receita.porcoes }} porções)</p>
+                
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="text-center">
+                            <h3 class="fw-bold mb-0">{{ info_nutricional.calorias|floatformat:0 }}</h3>
+                            <small>Calorias</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <h3 class="fw-bold mb-0">{{ info_nutricional.proteinas|floatformat:1 }}g</h3>
+                            <small>Proteínas</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <h3 class="fw-bold mb-0">{{ info_nutricional.carboidratos|floatformat:1 }}g</h3>
+                            <small>Carboidratos</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <h3 class="fw-bold mb-0">{{ info_nutricional.gorduras|floatformat:1 }}g</h3>
+                            <small>Gorduras</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <h3 class="fw-bold mb-0">{{ info_nutricional.acucares|floatformat:1 }}g</h3>
+                            <small>Açúcares</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <h3 class="fw-bold mb-0">{{ info_nutricional.sodio|floatformat:1 }}mg</h3>
+                            <small>Sódio</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Card de Avaliação -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="fw-bold mb-3">
+                    <i class="bi bi-star"></i> Avaliar Receita
+                </h5>
+                
+                {% if user.is_authenticated %}
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Sua avaliação:</label>
+                        <div class="star-rating" id="starRating">
+                            <i class="bi bi-star" data-value="1"></i>
+                            <i class="bi bi-star" data-value="2"></i>
+                            <i class="bi bi-star" data-value="3"></i>
+                            <i class="bi bi-star" data-value="4"></i>
+                            <i class="bi bi-star" data-value="5"></i>
+                        </div>
+                        <input type="hidden" name="nota" id="notaInput" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Comentário (opcional):</label>
+                        <textarea name="comentario" class="form-control" rows="3" 
+                                  placeholder="O que você achou desta receita?"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-send"></i> Enviar Avaliação
+                    </button>
+                </form>
+                {% else %}
+                <p class="text-muted">
+                    <a href="{% url 'login' %}?next={{ request.path }}">Faça login</a> para avaliar esta receita.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Lista de Avaliações -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="fw-bold mb-3">
+                    <i class="bi bi-chat-heart"></i> Avaliações ({{ avaliacoes.count }})
+                </h5>
+                
+                {% for avaliacao in avaliacoes %}
+                <div class="mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+                    <div class="d-flex justify-content-between mb-2">
+                        <strong><i class="bi bi-person-circle"></i> {{ avaliacao.usuario.username }}</strong>
+                        <span class="rating">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= avaliacao.nota %}
+                                <i class="bi bi-star-fill"></i>
+                                {% else %}
+                                <i class="bi bi-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </span>
+                    </div>
+                    {% if avaliacao.comentario %}
+                    <p class="text-muted small mb-1">{{ avaliacao.comentario }}</p>
+                    {% endif %}
+                    <small class="text-muted">{{ avaliacao.criado_em|date:"d/m/Y H:i" }}</small>
+                </div>
+                {% empty %}
+                <p class="text-muted text-center py-3">Nenhuma avaliação ainda. Seja o primeiro!</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Botão de Compartilhar -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="fw-bold mb-3"><i class="bi bi-share"></i> Compartilhar</h5>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-success" onclick="compartilharWhatsApp()">
+                        <i class="bi bi-whatsapp"></i> WhatsApp
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="compartilharFacebook()">
+                        <i class="bi bi-facebook"></i> Facebook
+                    </button>
+                    <button class="btn btn-outline-info" onclick="compartilharTwitter()">
+                        <i class="bi bi-twitter"></i> Twitter
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="copiarLink()">
+                        <i class="bi bi-link-45deg"></i> Copiar Link
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Sistema de avaliação com estrelas
+const stars = document.querySelectorAll('.star-rating i');
+const notaInput = document.getElementById('notaInput');
+
+if (stars.length > 0) {
+    stars.forEach(star => {
+        star.addEventListener('click', () => {
+            const value = star.getAttribute('data-value');
+            notaInput.value = value;
+            
+            // Atualizar visual das estrelas
+            stars.forEach((s, index) => {
+                if (index < value) {
+                    s.classList.remove('bi-star');
+                    s.classList.add('bi-star-fill');
+                } else {
+                    s.classList.remove('bi-star-fill');
+                    s.classList.add('bi-star');
+                }
+            });
+        });
+        
+        // Hover effect
+        star.addEventListener('mouseenter', () => {
+            const value = star.getAttribute('data-value');
+            stars.forEach((s, index) => {
+                if (index < value) {
+                    s.style.color = '#ffd700';
+                } else {
+                    s.style.color = '#ddd';
+                }
+            });
+        });
+    });
+
+    document.querySelector('.star-rating').addEventListener('mouseleave', () => {
+        const currentValue = notaInput.value;
+        stars.forEach((s, index) => {
+            if (currentValue && index < currentValue) {
+                s.style.color = '#ffd700';
+            } else {
+                s.style.color = '';
+            }
+        });
+    });
+}
+
+// Funções de compartilhamento
+function compartilharWhatsApp() {
+    const url = window.location.href;
+    const texto = `Olha essa receita incrível: {{ receita.titulo }}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto + ' ' + url)}`, '_blank');
+}
+
+function compartilharFacebook() {
+    const url = window.location.href;
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+}
+
+function compartilharTwitter() {
+    const url = window.location.href;
+    const texto = `Confira: {{ receita.titulo }}`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(texto)}&url=${encodeURIComponent(url)}`, '_blank');
+}
+
+function copiarLink() {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+        // Criar notificação de sucesso
+        const alerta = document.createElement('div');
+        alerta.className = 'alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3';
+        alerta.style.zIndex = '9999';
+        alerta.innerHTML = '<i class="bi bi-check-circle"></i> Link copiado para a área de transferência!';
+        document.body.appendChild(alerta);
+        
+        setTimeout(() => {
+            alerta.remove();
+        }, 3000);
+    }).catch(err => {
+        alert('Erro ao copiar link. Tente novamente.');
+    });
+}
+</script>
+
+<style>
+.star-rating {
+    display: flex;
+    gap: 5px;
+    font-size: 1.5rem;
+}
+
+.star-rating i {
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #ddd;
+}
+
+.star-rating i:hover {
+    transform: scale(1.2);
+}
+
+.star-rating i.bi-star-fill {
+    color: #ffd700;
+}
+</style>
+{% endblock %}
