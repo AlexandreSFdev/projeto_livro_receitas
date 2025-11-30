@@ -218,42 +218,41 @@ Ingrediente.objects.create(
 ## 📊 Estrutura Final do Projeto
 
 ```
-livro_receitas_projeto/
+projeto_livro_receitas/
 ├── venv/
 ├── livro_receitas/
-│   ├── manage.py
-│   ├── db.sqlite3
-│   ├── media/
-│   │   └── receitas/
-│   ├── livro_receitas/
-│   │   ├── settings.py
-│   │   ├── urls.py
-│   │   └── ...
-│   └── receitas/
-│       ├── models.py
-│       ├── views.py
-│       ├── forms.py
-│       ├── urls.py
-│       ├── admin.py
-│       ├── management/
-│       │   ├── __init__.py
-│       │   └── commands/
-│       │       ├── __init__.py
-│       │       ├── popular_ingredientes.py
-│       │       └── popular_categorias.py
-│       └── templates/
-│           └── receitas/
-│               ├── base.html
-│               ├── lista.html
-│               ├── detalhe.html
-│               ├── form.html
-│               ├── login.html
-│               ├── registro.html
-│               ├── minhas_receitas.html
-│               ├── favoritas.html
-│               ├── categorias.html
-│               └── por_categoria.html
-└── requirements.txt
+│   ├── settings.py
+│   ├── urls.py
+│   └── ...
+├── manage.py
+├── db.sqlite3
+├── media/
+├── receitas/
+│    ├── models.py
+│    ├── views.py
+│    ├── forms.py
+│    ├── urls.py
+│    ├── admin.py
+│    ├── management/
+│    │   ├── __init__.py
+│    │   └── commands/
+│    │       ├── __init__.py
+│    │       ├── popular_ingredientes.py
+│    │       └── popular_categorias.py
+│    └── templates/
+│        └── receitas/
+│            ├── base.html
+│            ├── lista.html
+│            ├── detalhe.html
+│            ├── form.html
+│            ├── login.html
+│            ├── registro.html
+│            ├── minhas_receitas.html
+│            ├── favoritas.html
+│            ├── populares.html
+│            ├── categorias.html
+│            └── por_categoria.html
+└──requirements.txt
 ```
 
 ---
